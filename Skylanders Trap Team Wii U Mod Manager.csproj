@@ -1,0 +1,80 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>STTUMM</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>STTUMM</AssemblyName>
+    <ApplicationIcon>assets\icon.ico</ApplicationIcon>
+	<OutputType>WinExe</OutputType>
+	<DisableWinExeOutputInference>true</DisableWinExeOutputInference>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="assets\elements\air.png" />
+    <None Remove="assets\elements\dark.png" />
+    <None Remove="assets\elements\earth.png" />
+    <None Remove="assets\elements\fire.png" />
+    <None Remove="assets\elements\kaos.png" />
+    <None Remove="assets\elements\life.png" />
+    <None Remove="assets\elements\light.png" />
+    <None Remove="assets\elements\magic.png" />
+    <None Remove="assets\elements\tech.png" />
+    <None Remove="assets\elements\undead.png" />
+    <None Remove="assets\elements\water.png" />
+    <None Remove="assets\games\sg.png" />
+    <None Remove="assets\games\ssa.png" />
+    <None Remove="assets\games\ssf.png" />
+    <None Remove="assets\games\stt.png" />
+    <None Remove="assets\placeholder.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="assets\icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCnEncoder.Net" Version="2.1.0" />
+    <PackageReference Include="BCnEncoder.Net.ImageSharp" Version="1.1.1" />
+    <PackageReference Include="HashDepot" Version="3.1.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="SevenZip" Version="19.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="assets\background.jpg" />
+    <Resource Include="assets\elements\air.png" />
+    <Resource Include="assets\elements\dark.png" />
+    <Resource Include="assets\elements\earth.png" />
+    <Resource Include="assets\elements\fire.png" />
+    <Resource Include="assets\elements\kaos.png" />
+    <Resource Include="assets\elements\life.png" />
+    <Resource Include="assets\elements\light.png" />
+    <Resource Include="assets\elements\magic.png" />
+    <Resource Include="assets\elements\tech.png" />
+    <Resource Include="assets\elements\undead.png" />
+    <Resource Include="assets\elements\water.png" />
+    <Resource Include="assets\games\sg.png" />
+    <Resource Include="assets\games\ssa.png" />
+    <Resource Include="assets\games\ssf.png" />
+    <Resource Include="assets\games\stt.png" />
+    <Resource Include="assets\icon.png" />
+    <Resource Include="assets\logo.png" />
+    <Resource Include="assets\placeholder.png" />
+    <Resource Include="assets\shaders\grayscale.ps" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="ProgressDialog.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="UserControls\FileSelect.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+
+</Project>

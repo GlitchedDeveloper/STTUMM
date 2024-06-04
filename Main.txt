@@ -1,0 +1,13 @@
+﻿
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*" />
+                        <ColumnDefinition Width="1*" />
+                    </Grid.ColumnDefinitions>
+                    <userControls:ImageSelect x:Name="Test" LabelContent="Mod Thumbnail" HorizontalAlignment="Center" Margin="0,30,0,0" VerticalAlignment="Top" ImageWidth="1280" ImageHeight="720"/>
+                    <Label Grid.Column="0" Content="Skylander Name" Foreground="#0f0" FontFamily="Consolas" VerticalAlignment="Top" HorizontalAlignment="Left" Padding="0" Margin="10,200,0,0"/>
+                    <TextBox Grid.Column="0" HorizontalAlignment="Stretch" Margin="10,220,10,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="24"/>
+                    <Label Grid.Column="1" Content="File Name" Foreground="#0f0" FontFamily="Consolas" VerticalAlignment="Top" HorizontalAlignment="Left" Padding="0" Margin="10,200,0,0"/>
+                    <TextBox Grid.Column="1" HorizontalAlignment="Stretch" Margin="10,220,10,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="24"/>
+                </Grid>
+                <Label Content="Create Skylander" Grid.Column="0" Foreground="#0f0" FontFamily="Consolas" VerticalAlignment="Top" HorizontalAlignment="Center" Padding="0" FontSize="20px" Margin="0,5,0,0"/>
