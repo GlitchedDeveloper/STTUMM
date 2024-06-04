@@ -1014,9 +1014,9 @@ namespace STTUMM
                 data.skylander.type = GetSelectedType();
 
                 SaveFileDialog sfd = new SaveFileDialog();
-                sfd.Filter = "Mod File (*.stt)|*.stt";
-                sfd.DefaultExt = "stt";
-                sfd.FileName = $"{GetModID(data, true)}.stt";
+                sfd.Filter = "Mod File (*.stt, *.zip)|*.stt;*.zip";
+                sfd.DefaultExt = "zip";
+                sfd.FileName = $"{GetModID(data, true)}.zip";
 
                 data.skylander.variants.normal = DefaultVariant.IsChecked == true;
                 data.skylander.variants.s2 = S2Variant.IsChecked == true;
@@ -1149,7 +1149,7 @@ namespace STTUMM
         private void InstallMod_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "Mod (*.stt)|*.stt";
+            ofd.Filter = "Mod File (*.stt, *.zip)|*.stt;*.zip";
             ofd.Multiselect = true;
             if (ofd.ShowDialog() == true)
             {
@@ -1426,9 +1426,9 @@ namespace STTUMM
                 data.version = ModVersion.Text;
 
                 SaveFileDialog sfd = new SaveFileDialog();
-                sfd.Filter = "Mod File (*.stt)|*.stt";
-                sfd.DefaultExt = "stt";
-                sfd.FileName = $"{GetModID(data, true)}.stt";
+                sfd.Filter = "Mod File (*.stt, *.zip)|*.stt;*.zip";
+                sfd.DefaultExt = "zip";
+                sfd.FileName = $"{GetModID(data, true)}.zip";
 
                 if (sfd.ShowDialog() == true)
                 {
@@ -1603,9 +1603,9 @@ namespace STTUMM
                 data.version = ModVersion.Text;
 
                 SaveFileDialog sfd = new SaveFileDialog();
-                sfd.Filter = "Mod File (*.stt)|*.stt";
-                sfd.DefaultExt = "stt";
-                sfd.FileName = $"{GetModID(data, true)}.stt";
+                sfd.Filter = "Mod File (*.stt, *.zip)|*.stt;*.zip";
+                sfd.DefaultExt = "zip";
+                sfd.FileName = $"{GetModID(data, true)}.zip";
 
                 if (sfd.ShowDialog() == true)
                 {
@@ -1732,9 +1732,9 @@ namespace STTUMM
                 data.version = ModVersion.Text;
 
                 SaveFileDialog sfd = new SaveFileDialog();
-                sfd.Filter = "Mod File (*.stt)|*.stt";
-                sfd.DefaultExt = "stt";
-                sfd.FileName = $"{GetModID(data, true)}.stt";
+                sfd.Filter = "Mod File (*.stt, *.zip)|*.stt;*.zip";
+                sfd.DefaultExt = "zip";
+                sfd.FileName = $"{GetModID(data, true)}.zip";
 
                 if (sfd.ShowDialog() == true)
                 {
@@ -1817,7 +1817,7 @@ namespace STTUMM
         private void AddModToModpack(object sender, RoutedEventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "Mod (*.stt)|*.stt";
+            ofd.Filter = "Mod File (*.stt, *.zip)|*.stt;*.zip";
             ofd.Multiselect = true;
             if (ofd.ShowDialog() == true)
             {
@@ -1868,9 +1868,9 @@ namespace STTUMM
             data.version = ModVersion.Text;
 
             SaveFileDialog sfd = new SaveFileDialog();
-            sfd.Filter = "Mod File (*.stt)|*.stt";
-            sfd.DefaultExt = "stt";
-            sfd.FileName = $"{GetModID(data, true)}.stt";
+            sfd.Filter = "Mod File (*.stt, *.zip)|*.stt;*.zip";
+            sfd.DefaultExt = "zip";
+            sfd.FileName = $"{GetModID(data, true)}.zip";
 
             if (sfd.ShowDialog() == true)
             {
