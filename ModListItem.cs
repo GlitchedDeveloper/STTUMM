@@ -7,6 +7,7 @@ namespace STTUMM
         public bool Enabled { get; set; }
         public string ModName { get; set; }
         public string ModDirectory { get; set; }
+        public string ModpackName { get; set; } = null;
         public ModListItem(string dir)
         {
             var data = ModData.ModBase.Load(File.ReadAllText(Path.Combine(dir, "data.json")));

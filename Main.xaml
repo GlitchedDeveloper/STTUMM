@@ -168,7 +168,17 @@
                                         <TextBlock Text="Description" TextWrapping="Wrap"/>
                                     </Label>
                                     <Image x:Name="ModDisplayThumbnail" Source="./assets/placeholder.png" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0" RenderOptions.BitmapScalingMode="HighQuality" Height="250"/>
-                                    <Button x:Name="ModDeleteButton" BorderBrush="#f00" Foreground="#f00" HorizontalAlignment="Right" VerticalAlignment="Bottom" Content="Delete Mod" Margin="0,0,10,10" Click="DeleteMod"/>
+                                    <Grid VerticalAlignment="Bottom" Height="30" Margin="0,0,0,40" x:Name="ModSkylanderDumpOptions">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Export Skylander Dump" Click="ExportSkylanderDump"/>
+                                        <Button Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Replace Skylander Dump" Click="ReplaceSkylanderDump"/>
+                                        <Button Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Reset Skylander Dump" Click="ResetSkylanderDump"/>
+                                    </Grid>
+                                    <Button Grid.Column="3" x:Name="ModDeleteButton" BorderBrush="#f00" Foreground="#f00" HorizontalAlignment="Center" VerticalAlignment="Bottom" Content="Delete Mod" Click="DeleteMod" Margin="0,0,0,10"/>
                                 </Grid>
                             </Grid>
                         </Border>
@@ -316,7 +326,6 @@
                                                     <RadioButton x:Name="GiantType" Content="Giant" GroupName="Type" Style="{StaticResource GreenRadioButton}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,40,0,0" Checked="Type_Checked"/>
                                                     <RadioButton x:Name="SwapForceType" Visibility="Hidden" Content="SWAP Force" GroupName="Type" Style="{StaticResource GreenRadioButton}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,60,0,0" Checked="Type_Checked"/>
                                                     <RadioButton x:Name="RangerType" Content="Trap Master" GroupName="Type" Style="{StaticResource GreenRadioButton}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,60,0,0" Checked="Type_Checked"/>
-                                                    <RadioButton x:Name="MiniType" Content="Mini" GroupName="Type" Style="{StaticResource GreenRadioButton}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,80,0,0" Checked="Type_Checked"/>
                                                 </Grid>
                                             </Grid>
                                             <Grid Grid.Column="2">
@@ -401,8 +410,14 @@
                 <userControls:FolderSelect x:Name="LoadiineFolderSelect" LabelContent="Loadiine Content Path" HorizontalAlignment="Stretch" Margin="5,35,5,0" VerticalAlignment="Top"/>
                 <userControls:FolderSelect x:Name="DumpFolderSelect" LabelContent="Skylander Dump Output Path" HorizontalAlignment="Stretch" Margin="5,135,5,0" VerticalAlignment="Top"/>
                 <userControls:FolderSelect x:Name="CEMUFolderSelect" LabelContent="CEMU Path (Optional)" HorizontalAlignment="Stretch" Margin="5,235,5,0" VerticalAlignment="Top"/>
-                <Button HorizontalAlignment="Center" Content="Save Changes" Margin="0,337,0,0" VerticalAlignment="Top" FontSize="30px" Click="SaveSettings_Click"/>
-                <Button BorderBrush="#f00" Foreground="#f00" HorizontalAlignment="Left" Content="RESET" Margin="10,335,0,0" VerticalAlignment="Top" Click="Reset_Click"/>
+                <Label Content="Game Region" VerticalAlignment="Top" HorizontalAlignment="Left" Padding="0" Margin="5,335,0,0"/>
+                <ComboBox x:Name="GameRegion" HorizontalAlignment="Stretch" Margin="5,355,10,0" VerticalAlignment="Top" Height="24" SelectedIndex="0">
+                    <ComboBoxItem>USA</ComboBoxItem>
+                    <ComboBoxItem>EUR</ComboBoxItem>
+                </ComboBox>
+                <Button HorizontalAlignment="Center" Content="Save Changes" Margin="0,437,0,0" VerticalAlignment="Top" FontSize="30px" Click="SaveSettings_Click"/>
+                <Button HorizontalAlignment="Left" Content="Enable GameBanana One-Click Installation" Margin="5,415,0,0" VerticalAlignment="Top" Click="OneClickInstall_Click"/>
+                <Button BorderBrush="#f00" Foreground="#f00" HorizontalAlignment="Left" Content="RESET" Margin="5,445,0,0" VerticalAlignment="Top" Click="Reset_Click"/>
             </Grid>
             <Grid x:Name="CreditsMenu" Margin="0,0,0,0" Visibility="Collapsed">
                 <Grid.Resources>
@@ -435,6 +450,64 @@
                     <Hyperlink NavigateUri="https://mafflmao.github.io/generator.html">Variant ID Generator</Hyperlink>
                 </TextBlock>
             </Grid>
+            <Grid x:Name="CEMUMenu" Margin="0,0,0,0" Visibility="Collapsed">
+                <Label Content="CEMU" VerticalAlignment="Top" HorizontalAlignment="Center" Padding="0" FontSize="20px" Margin="0,5,0,0"/>
+                <Grid Margin="0,40,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="55" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="50" />
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" x:Name="SaveFile" Margin="0,30,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="900" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Backup Save Name" FontSize="20px" Foreground="#0f0" FontFamily="Consolas" Grid.Column="0" HorizontalAlignment="Center" Margin="0,0,0,0"/>
+                        <TextBlock Text="Account ID" FontSize="20px" Foreground="#0f0" FontFamily="Consolas" Grid.Column="1" HorizontalAlignment="Center" Margin="0,0,0,0"/>
+                    </Grid>
+                    <ItemsControl Grid.Row="1" x:Name="SaveBackupsList" Margin="0,0,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid x:Name="SaveFile" Height="30">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="150" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding SaveName}" Foreground="#0f0" FontFamily="Consolas" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                                    <TextBlock Text="{Binding AccountId}" Foreground="#0f0" FontFamily="Consolas" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                                    <Button Grid.Column="2" Content="Restore Save Header" Margin="5,0,5,0" VerticalAlignment="Center" Click="RestoreSave_Click" Tag="Header"/>
+                                    <Button Grid.Column="3" Content="Restore Save Slot 1" Margin="5,0,5,0" VerticalAlignment="Center" Click="RestoreSave_Click" Tag="Slot_1"/>
+                                    <Button Grid.Column="4" Content="Restore Save Slot 2" Margin="5,0,5,0" VerticalAlignment="Center" Click="RestoreSave_Click" Tag="Slot_2"/>
+                                    <Button Grid.Column="5" Content="Restore Save Slot 3" Margin="5,0,5,0" VerticalAlignment="Center" Click="RestoreSave_Click" Tag="Slot_3"/>
+                                    <Button Grid.Column="6" Content="Restore Save Slot 4" Margin="5,0,5,0" VerticalAlignment="Center" Click="RestoreSave_Click" Tag="Slot_4"/>
+                                    <Button Grid.Column="7" BorderBrush="#f00" Foreground="#f00" Content="Delete Save Backup" Margin="5,0,5,0" VerticalAlignment="Center" Click="DeleteSaveBackup_Click"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="150" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0" Content="Backup Save Name" VerticalAlignment="Top" HorizontalAlignment="Left" Padding="0" Margin="15,0,0,0"/>
+                        <TextBox Grid.Column="0" Name="BackupSaveName" Margin="10,20,5,0" VerticalAlignment="Top" Height="24"/>
+                        <Label Grid.Column="1" Content="Account" VerticalAlignment="Top" HorizontalAlignment="Left" Padding="0" Margin="15,0,0,0"/>
+                        <ComboBox Name="AccountSelector" Grid.Column="1" HorizontalAlignment="Stretch" Margin="10,20,10,0" VerticalAlignment="Top" Height="24" SelectedIndex="0">
+                        </ComboBox>
+                        <Button Grid.Column="2" Content="Backup Save Data" Margin="5,20,5,0" VerticalAlignment="Top" Click="BackupSaveData_Click"/>
+                    </Grid>
+                </Grid>
+            </Grid>
         </Grid>
         <Grid x:Name="SideBar" Background="Black" Width="200" HorizontalAlignment="Left" Margin="0,20,0,0">
             <Grid.Resources>
@@ -461,6 +534,7 @@
                 <Button x:Name="CreateModMenuButton" Content="Create Mod" Click="CreateModButton_Click" />
                 <Button x:Name="SettingsMenuButton" Content="Settings" Click="SettingsButton_Click" />
                 <Button x:Name="CreditsMenuButton" Content="Credits" Click="CreditsButton_Click" />
+                <Button x:Name="CEMUMenuButton" Content="CEMU" Click="CEMUButton_Click" Visibility="Collapsed" />
             </StackPanel>
             <Rectangle x:Name="MenuSelectionIndicator" Fill="#0f0" Height="50" Width="2" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="1,100,0,0" />
         </Grid>
@@ -470,7 +544,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Image x:Name="Icon" Source="assets/icon.png" HorizontalAlignment="Left" VerticalAlignment="Top" Height="15" Margin="2.5,2.5,0,0" RenderOptions.BitmapScalingMode="HighQuality"/>
-            <Label Content="Skylanders Trap Team Wii U Mod Manager" Foreground="#0f0" FontFamily="Consolas" VerticalAlignment="Center" HorizontalAlignment="Left" Padding="0" Margin="20,0,0,0"/>
+            <Label Content="Skylanders Trap Team Wii U Mod Manager v1.1 BETA" Foreground="#0f0" FontFamily="Consolas" VerticalAlignment="Center" HorizontalAlignment="Left" Padding="0" Margin="20,0,0,0"/>
             <StackPanel Orientation="Horizontal" Grid.Column="1">
                 <Button x:Name="MinimizeButton" Foreground="#0f0" FontFamily="Consolas" Content="_" Width="20" Background="Transparent" Cursor="Hand" Click="MinimizeButton_Click">
                     <Button.Template>

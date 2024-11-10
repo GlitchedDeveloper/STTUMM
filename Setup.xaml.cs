@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,7 +15,15 @@ namespace STTUMM
         private string configPath;
         public Setup()
         {
-            configPath = Path.Combine(Directory.GetCurrentDirectory(), "config.json");
+            configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+            string[] args = Environment.GetCommandLineArgs();
+            if (args.Length > 1 && args[1].StartsWith("sttumm:"))
+            {
+                OneClickDownload window = new OneClickDownload(args[1].Replace("sttumm:", ""));
+                window.Show();
+                this.Close();
+                return;
+            }
             config = Config.Load(configPath);
             string LoadiinePath = config.Paths.Loadiine;
             string CEMUPath = config.Paths.Cemu;
@@ -29,6 +38,14 @@ namespace STTUMM
                 LoadiineFolderSelect.SetPath(config.Paths.Loadiine);
                 CEMUFolderSelect.SetPath(config.Paths.Cemu);
                 DumpFolderSelect.SetPath(config.Paths.Dump);
+                if (config.Region == "EUR")
+                {
+                    GameRegion.SelectedIndex = 1;
+                }
+                else
+                {
+                    GameRegion.SelectedIndex = 0;
+                }
                 CheckPaths(LoadiinePath, CEMUPath, DumpPath);
             }
         }
@@ -119,6 +136,7 @@ namespace STTUMM
                 DumpOk = true;
                 if (showErrors) DumpFolderSelect.SetError("");
             }
+
             return LoadiineOk && CEMUOk && DumpOk;
         }
 
@@ -132,6 +150,7 @@ namespace STTUMM
                 config.Paths.Loadiine = LoadiinePath;
                 config.Paths.Cemu = CEMUPath;
                 config.Paths.Dump = DumpPath;
+                config.Region = new string[] { "USA", "EUR" }[GameRegion.SelectedIndex];
                 config.Save(configPath);
                 OpenMainWindow();
             }

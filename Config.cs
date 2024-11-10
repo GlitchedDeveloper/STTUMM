@@ -6,10 +6,12 @@ namespace STTUMM
     public class Config
     {
         public Paths Paths { get; set; }
+        public string Region { get; set; }
 
         public Config()
         {
             Paths = new Paths();
+            Region = "USA";
         }
 
         public static Config Load(string filePath)

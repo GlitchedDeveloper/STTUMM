@@ -17,6 +17,10 @@ using System.Windows.Documents;
 using System.Windows.Navigation;
 using STTUMM.IGAE.Types;
 using System.Text;
+using System.Reflection;
+using System.Windows.Threading;
+using System.IO.Pipes;
+using System.Windows.Shell;
 
 namespace STTUMM
 {
@@ -35,17 +39,26 @@ namespace STTUMM
         public Main(Config settings)
         {
             config = settings;
-            configPath = Path.Join(Directory.GetCurrentDirectory(), "config.json");
+            configPath = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "config.json");
             InitializeComponent();
             AddHandler(Hyperlink.RequestNavigateEvent, new RequestNavigateEventHandler(HandleRequestNavigate));
             LoadiineFolderSelect.SetPath(config.Paths.Loadiine);
             CEMUFolderSelect.SetPath(config.Paths.Cemu);
             DumpFolderSelect.SetPath(config.Paths.Dump);
+            if (config.Region == "EUR")
+            {
+                GameRegion.SelectedIndex = 1;
+            }
+            else
+            {
+                GameRegion.SelectedIndex = 0;
+            }
             Menus = new FrameworkElement[] {
                 ModsMenu,
                 CreateMenu,
                 SettingsMenu,
-                CreditsMenu
+                CreditsMenu,
+                CEMUMenu
             };
             ActiveMenuIdx = 0;
             ModCreationMenus = new FrameworkElement[] {
@@ -66,13 +79,33 @@ namespace STTUMM
             SkylanderMods = new List<ModListItem>();
             TextureMods = new List<ModListItem>();
             LanguageMods = new List<ModListItem>();
-            if (!Directory.Exists(Path.Join(Directory.GetCurrentDirectory(), "Installed Mods")))
-            {
-                Directory.CreateDirectory(Path.Join(Directory.GetCurrentDirectory(), "Installed Mods"));
-            }
-            byte[] data = SkylanderDumps.Generate(5000, 12288);
-            data = skyDecrypter.decryptSkylander(data);
+            if (!Directory.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Installed Mods")))
+                Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Installed Mods"));
+            if (!Directory.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Save Backups")))
+                Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Save Backups"));
+            if (!Directory.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Skylander Backups")))
+                Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Skylander Backups"));
             UpdateModData();
+            Task.Run(Server);
+            //byte[] dump = SkylanderDumps.Generate(453, 14341);
+            //File.WriteAllBytes(Path.Join(config.Paths.Dump, $"TEST [453].sky"), dump);
+            //dump = SkylanderDumps.Generate(453, 15362);
+            //File.WriteAllBytes(Path.Join(config.Paths.Dump, $"TEST [453] 2.sky"), dump);
+            if (File.Exists(Path.Join(config.Paths.Cemu, "Cemu.exe")))
+            {
+                CEMUMenuButton.Visibility = Visibility.Visible;
+                UpdateAccounts();
+                UpdateSaveData();
+            }
+            else
+            {
+                CEMUMenuButton.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        string SanitizeFolderName(string folderName)
+        {
+            return Regex.Replace(folderName, @"[\\/:*?""<>|]", "");
         }
         public bool IsDiff(Stream stream1, Stream stream2)
         {
@@ -139,8 +172,15 @@ namespace STTUMM
             return graphicPackDir;
         }
 
-        private void GenerateSkylanderDump(ModData.SkylanderMod data, string ModID, Dictionary<string, int> modToID, Dictionary<string, byte[]> oldModToDump, int variantId, string variant = "")
+        private void GenerateSkylanderDump(ModListItem mod, ModData.SkylanderMod data, string ModID, Dictionary<string, int> modToID, Dictionary<string, byte[]> oldModToDump, int variantId, string variant = "")
         {
+            string path = config.Paths.Dump;
+            if (mod.ModpackName != null)
+                path = Path.Join(path, SanitizeFolderName(mod.ModpackName), SanitizeFolderName(mod.ModName));
+            else
+                path = Path.Join(path, SanitizeFolderName(mod.ModName));
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
             byte[] dump;
             if (data.skylander.type == "swap")
             {
@@ -154,11 +194,11 @@ namespace STTUMM
                 }
                 if (variant == "")
                 {
-                    File.WriteAllBytes(Path.Join(config.Paths.Dump, $"{FilterFilename(data.skylander.name)} (Top) [{modToID[ModID]}].sky"), dump);
+                    File.WriteAllBytes(Path.Join(path, $"{FilterFilename(data.skylander.name)} (Top) [{modToID[ModID]}].sky"), dump);
                 }
                 else
                 {
-                    File.WriteAllBytes(Path.Join(config.Paths.Dump, $"{FilterFilename(data.skylander.name)} ({variant}) (Top) [{modToID[ModID]}].sky"), dump);
+                    File.WriteAllBytes(Path.Join(path, $"{FilterFilename(data.skylander.name)} ({variant}) (Top) [{modToID[ModID]}].sky"), dump);
                 }
 
                 if (oldModToDump.ContainsKey($"{ModID}-bot-{variantId}"))
@@ -171,11 +211,11 @@ namespace STTUMM
                 }
                 if (variant == "")
                 {
-                    File.WriteAllBytes(Path.Join(config.Paths.Dump, $"{FilterFilename(data.skylander.name_bot)} (Bottom) [{modToID[$"{ModID}-bot"]}].sky"), dump);
+                    File.WriteAllBytes(Path.Join(path, $"{FilterFilename(data.skylander.name_bot)} (Bottom) [{modToID[$"{ModID}-bot"]}].sky"), dump);
                 }
                 else
                 {
-                    File.WriteAllBytes(Path.Join(config.Paths.Dump, $"{FilterFilename(data.skylander.name_bot)} ({variant}) (Bottom) [{modToID[$"{ModID}-bot"]}].sky"), dump);
+                    File.WriteAllBytes(Path.Join(path, $"{FilterFilename(data.skylander.name_bot)} ({variant}) (Bottom) [{modToID[$"{ModID}-bot"]}].sky"), dump);
                 }
             }
             else
@@ -191,11 +231,11 @@ namespace STTUMM
                 if (variant == "")
                 {
                     Console.WriteLine($"{modToID[ModID]}:{variantId}");
-                    File.WriteAllBytes(Path.Join(config.Paths.Dump, $"{FilterFilename(data.skylander.name)} [{modToID[ModID]}].sky"), dump);
+                    File.WriteAllBytes(Path.Join(path, $"{FilterFilename(data.skylander.name)} [{modToID[ModID]}].sky"), dump);
                 }
                 else
                 {
-                    File.WriteAllBytes(Path.Join(config.Paths.Dump, $"{FilterFilename(data.skylander.name)} ({variant}) [{modToID[ModID]}].sky"), dump);
+                    File.WriteAllBytes(Path.Join(path, $"{FilterFilename(data.skylander.name)} ({variant}) [{modToID[ModID]}].sky"), dump);
                 }
             }
         }
@@ -210,6 +250,24 @@ namespace STTUMM
 
             return result.ToString();
         }
+        public async Task Server()
+        {
+            while (true)
+            {
+                using (var server = new NamedPipeServerStream("STTUMM_Pipe"))
+                {
+                    await server.WaitForConnectionAsync();
+                    using (var reader = new StreamReader(server))
+                    {
+                        string message = await reader.ReadLineAsync();
+                        if (message == "Reload Mods")
+                        {
+                            Dispatcher.Invoke(() => UpdateModData());
+                        }
+                    }
+                }
+            }
+        }
         public async Task MergeWithDialog()
         {
             var d = new ProgressDialog("Processing...");
@@ -220,13 +278,17 @@ namespace STTUMM
         }
         public void Merge(ProgressDialog d)
         {
-            if (Directory.Exists(Path.Join(Directory.GetCurrentDirectory(), "content")))
+            if (Directory.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content")))
             {
-                Directory.Delete(Path.Join(Directory.GetCurrentDirectory(), "content"), true);
+                Directory.Delete(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content"), true);
             }
-            Directory.CreateDirectory(Path.Join(Directory.GetCurrentDirectory(), "content"));
-            Directory.CreateDirectory(Path.Join(Directory.GetCurrentDirectory(), "content", "character"));
-            string graphicPackDir = CreateGraphicPack();
+            Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content"));
+            Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", "character"));
+            string graphicPackDir = null;
+            if (config.Paths.Cemu != "")
+            {
+                graphicPackDir = CreateGraphicPack();
+            }
 
             Dispatcher.Invoke(() => d.UpdateProgress("Merging Content Mods..."));
             foreach (ModListItem mod in ContentMods)
@@ -235,17 +297,17 @@ namespace STTUMM
                 foreach (string folderPath in Directory.GetDirectories(Path.Join(mod.ModDirectory, "content")))
                 {
                     string folder = Path.GetFileName(folderPath);
-                    if (!Directory.Exists(Path.Join(Directory.GetCurrentDirectory(), "content", folder)))
-                        Directory.CreateDirectory(Path.Join(Directory.GetCurrentDirectory(), "content", folder));
+                    if (!Directory.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder)))
+                        Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder));
                     foreach (string filePath in Directory.GetFiles(folderPath))
                     {
                         string file = Path.GetFileName(filePath);
-                        File.Copy(filePath, Path.Join(Directory.GetCurrentDirectory(), "content", folder, file), true);
+                        File.Copy(filePath, Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder, file), true);
                     }
                     foreach (string fileFolderPath in Directory.GetDirectories(folderPath))
                     {
                         string file = Path.GetFileName(fileFolderPath);
-                        string igaPath = Path.Join(Directory.GetCurrentDirectory(), "content", folder, file);
+                        string igaPath = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder, file);
                         if (!File.Exists(igaPath))
                             igaPath = Path.Join(config.Paths.Loadiine, "content", folder, file);
                         IGA_File iga = new IGA_File(igaPath, IGA_Version.SkylandersTrapTeam);
@@ -268,7 +330,7 @@ namespace STTUMM
                                     fileData[i] = stream;
                                 }
                             }
-                            iga.Build(Path.Join(Directory.GetCurrentDirectory(), "content", folder, file), fileData);
+                            iga.Build(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder, file), fileData);
                             iga.Close();
                         }
                         if (file.EndsWith(".arc"))
@@ -294,7 +356,7 @@ namespace STTUMM
                                     fileData[i] = stream;
                                 }
                             }
-                            iga.Build(Path.Join(Directory.GetCurrentDirectory(), "content", folder, file), fileData);
+                            iga.Build(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder, file), fileData);
                             iga.Close();
                         }
                     }
@@ -308,12 +370,12 @@ namespace STTUMM
                 foreach (string folderPath in Directory.GetDirectories(Path.Join(mod.ModDirectory, "content")))
                 {
                     string folder = Path.GetFileName(folderPath);
-                    if (!Directory.Exists(Path.Join(Directory.GetCurrentDirectory(), "content", folder)))
-                        Directory.CreateDirectory(Path.Join(Directory.GetCurrentDirectory(), "content", folder));
+                    if (!Directory.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder)))
+                        Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder));
                     foreach (string fileFolderPath in Directory.GetDirectories(folderPath))
                     {
                         string file = Path.GetFileName(fileFolderPath);
-                        string igaPath = Path.Join(Directory.GetCurrentDirectory(), "content", folder, file);
+                        string igaPath = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder, file);
                         if (!File.Exists(igaPath))
                             igaPath = Path.Join(config.Paths.Loadiine, "content", folder, file);
                         IGA_File iga = new IGA_File(igaPath, IGA_Version.SkylandersTrapTeam);
@@ -354,7 +416,7 @@ namespace STTUMM
                                 fileData[i] = stream;
                             }
                         }
-                        iga.Build(Path.Join(Directory.GetCurrentDirectory(), "content", folder, file), fileData);
+                        iga.Build(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder, file), fileData);
                         iga.Close();
                     }
                 }
@@ -367,12 +429,12 @@ namespace STTUMM
                 foreach (string folderPath in Directory.GetDirectories(Path.Join(mod.ModDirectory, "content")))
                 {
                     string folder = Path.GetFileName(folderPath);
-                    if (!Directory.Exists(Path.Join(Directory.GetCurrentDirectory(), "content", folder)))
-                        Directory.CreateDirectory(Path.Join(Directory.GetCurrentDirectory(), "content", folder));
+                    if (!Directory.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder)))
+                        Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder));
                     foreach (string fileFolderPath in Directory.GetDirectories(folderPath))
                     {
                         string file = Path.GetFileName(fileFolderPath);
-                        string igaPath = Path.Join(Directory.GetCurrentDirectory(), "content", folder, file);
+                        string igaPath = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder, file);
                         if (!File.Exists(igaPath))
                             igaPath = Path.Join(config.Paths.Loadiine, "content", folder, file);
                         IGA_File iga = new IGA_File(igaPath, IGA_Version.SkylandersTrapTeam);
@@ -387,7 +449,7 @@ namespace STTUMM
                                 LanguagePak pak = new LanguagePak(stream);
                                 string[] langdata = pak.unpack();
                                 Dictionary<int, string> edits = JsonConvert.DeserializeObject<Dictionary<int, string>>(File.ReadAllText(Path.Join(fileFolderPath, $"{iga.names[i]}.json")));
-                                foreach(int idx in edits.Keys)
+                                foreach (int idx in edits.Keys)
                                 {
                                     Console.WriteLine(idx + ": " + edits[idx]);
                                     langdata[idx] = edits[idx];
@@ -400,7 +462,7 @@ namespace STTUMM
                             stream.Seek(0, SeekOrigin.Begin);
                             fileData[i] = stream;
                         }
-                        iga.Build(Path.Join(Directory.GetCurrentDirectory(), "content", folder, file), fileData);
+                        iga.Build(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", folder, file), fileData);
                         iga.Close();
                     }
                 }
@@ -416,11 +478,12 @@ namespace STTUMM
             List<string> swap_top = new List<string> { };
             List<string> swap_bot = new List<string> { };
             Dictionary<string, byte[]> oldModToDump = new Dictionary<string, byte[]> { };
-            if (File.Exists(Path.Join(Directory.GetCurrentDirectory(), "SkylanderIDs.json")) && Directory.Exists(Path.Join(config.Paths.Dump)))
+            if (File.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "SkylanderIDs.json")) && Directory.Exists(Path.Join(config.Paths.Dump)))
             {
-                Dictionary<string, int> oldModToID = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(Path.Join(Directory.GetCurrentDirectory(), "SkylanderIDs.json")));
-                foreach (string dumppath in Directory.GetFiles(Path.Join(config.Paths.Dump)))
+                Dictionary<string, int> oldModToID = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "SkylanderIDs.json")));
+                foreach (string dumppath in Directory.GetFiles(Path.Join(config.Paths.Dump), "*.*", SearchOption.AllDirectories))
                 {
+                    Console.WriteLine(dumppath);
                     byte[] dump = File.ReadAllBytes(dumppath);
                     int id = SkylanderDumps.GetID(dump);
                     int variantId = SkylanderDumps.GetVariantID(dump);
@@ -430,11 +493,17 @@ namespace STTUMM
                         {
                             if (item.Value == id)
                             {
-                                oldModToDump[$"{item.Key}-{variantId}"] = dump;
+                                File.WriteAllBytes(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Skylander Backups", $"{item.Key}-{variantId}.sky"), dump);
                                 break;
                             }
                         }
                     }
+                }
+                foreach (string filePath in Directory.GetFiles(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Skylander Backups"), "*.sky"))
+                {
+                    string fileName = Path.GetFileNameWithoutExtension(filePath);
+                    byte[] dump = File.ReadAllBytes(filePath);
+                    oldModToDump[fileName] = dump;
                 }
             }
             if (Directory.Exists(Path.Join(config.Paths.Dump)))
@@ -451,15 +520,15 @@ namespace STTUMM
                 if (data.skylander.type == "swap")
                 {
                     modToID[ModID + "-bot"] = 5000 + modToID.Values.Count;
-                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander_top.bld"), Path.Join(Directory.GetCurrentDirectory(), "content", "character", $"{modToID[ModID]}_{internalName}_top.bld"));
-                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander_top.arc"), Path.Join(Directory.GetCurrentDirectory(), "content", "character", $"{modToID[ModID]}_{internalName}_top.arc"));
-                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander_bot.bld"), Path.Join(Directory.GetCurrentDirectory(), "content", "character", $"{modToID[ModID + "-bot"]}_{internalName}_bot.bld"));
-                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander_bot.arc"), Path.Join(Directory.GetCurrentDirectory(), "content", "character", $"{modToID[ModID + "-bot"]}_{internalName}_bot.arc"));
+                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander_top.bld"), Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", "character", $"{modToID[ModID]}_{internalName}_top.bld"));
+                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander_top.arc"), Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", "character", $"{modToID[ModID]}_{internalName}_top.arc"));
+                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander_bot.bld"), Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", "character", $"{modToID[ModID + "-bot"]}_{internalName}_bot.bld"));
+                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander_bot.arc"), Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", "character", $"{modToID[ModID + "-bot"]}_{internalName}_bot.arc"));
                 }
                 else
                 {
-                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander.bld"), Path.Join(Directory.GetCurrentDirectory(), "content", "character", $"{modToID[ModID]}_{internalName}.bld"));
-                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander.arc"), Path.Join(Directory.GetCurrentDirectory(), "content", "character", $"{modToID[ModID]}_{internalName}.arc"));
+                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander.bld"), Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", "character", $"{modToID[ModID]}_{internalName}.bld"));
+                    File.Copy(Path.Join(mod.ModDirectory, "skylander", "skylander.arc"), Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", "character", $"{modToID[ModID]}_{internalName}.arc"));
                 }
 
                 //Generate Variant IDs
@@ -469,17 +538,17 @@ namespace STTUMM
                 if (data.skylander.game == "ssf") year = 2;
                 if (data.skylander.game == "stt") year = 3;
                 if (data.skylander.variants.normal)
-                    GenerateSkylanderDump(data, ModID, modToID, oldModToDump, GenVariantID(year));
+                    GenerateSkylanderDump(mod, data, ModID, modToID, oldModToDump, GenVariantID(year));
                 if (data.skylander.variants.s2)
-                    GenerateSkylanderDump(data, ModID, modToID, oldModToDump, GenVariantID(1, true, false, false, false, 1), "Series 2");
+                    GenerateSkylanderDump(mod, data, ModID, modToID, oldModToDump, GenVariantID(1, true, false, false, false, 1), "Series 2");
                 if (data.skylander.variants.s3)
-                    GenerateSkylanderDump(data, ModID, modToID, oldModToDump, GenVariantID(2, true, false, false, false, 5), "Series 3");
+                    GenerateSkylanderDump(mod, data, ModID, modToID, oldModToDump, GenVariantID(2, true, false, false, false, 5), "Series 3");
                 if (data.skylander.variants.s4)
-                    GenerateSkylanderDump(data, ModID, modToID, oldModToDump, GenVariantID(3, true, false, false, false, 9), "Series 4");
+                    GenerateSkylanderDump(mod, data, ModID, modToID, oldModToDump, GenVariantID(3, true, false, false, false, 9), "Series 4");
                 if (data.skylander.variants.lightcore)
-                    GenerateSkylanderDump(data, ModID, modToID, oldModToDump, GenVariantID(year, false, false, true, false, 6), data.skylander.type == "giant" ? "Giant" : "Lightcore");
+                    GenerateSkylanderDump(mod, data, ModID, modToID, oldModToDump, GenVariantID(year, false, false, true, false, 6), data.skylander.type == "giant" ? "Giant" : "Lightcore");
                 if (data.skylander.variants.eon)
-                    GenerateSkylanderDump(data, ModID, modToID, oldModToDump, GenVariantID(3, true, false, false, false, 16), "Eon's Elite");
+                    GenerateSkylanderDump(mod, data, ModID, modToID, oldModToDump, GenVariantID(3, true, false, false, false, 16), "Eon's Elite");
 
                 string lookupData = $"{modToID[ModID]},{data.skylander.element},{internalName},{data.skylander.name.Replace(",", "")}";
                 if (data.skylander.type == "giant")
@@ -492,9 +561,9 @@ namespace STTUMM
                 }
                 if (data.skylander.type == "mini")
                 {
-                    mini.Add(lookupData);
+                    mini.Add($"{modToID[ModID]},{data.skylander.element},{$"{modToID[ModID]}_{internalName}"},{data.skylander.name.Replace(",", "")}");
                 }
-                else if(data.skylander.type == "swap")
+                else if (data.skylander.type == "swap")
                 {
                     swap_top.Add(lookupData);
                     swap_bot.Add($"{modToID[$"{ModID}-bot"]},{data.skylander.element},{internalName},{data.skylander.name.Replace(",", "")}");
@@ -516,9 +585,9 @@ namespace STTUMM
                     stt.Add(lookupData);
                 }
             }
-            File.WriteAllText(Path.Join(Directory.GetCurrentDirectory(), "SkylanderIDs.json"), JsonConvert.SerializeObject(modToID, Formatting.Indented));
-            BuildInitSetup(Path.Join(Directory.GetCurrentDirectory(), "content", "character", "Init_Setup.bld"), ssa, sg, ssf, stt, mini, swap_top, swap_bot);
-            CopyDirectory(Path.Join(Directory.GetCurrentDirectory(), "content"), Path.Join(graphicPackDir, "content"));
+            File.WriteAllText(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "SkylanderIDs.json"), JsonConvert.SerializeObject(modToID, Formatting.Indented));
+            BuildInitSetup(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content", "character", "Init_Setup.bld"), ssa, sg, ssf, stt, mini, swap_top, swap_bot);
+            if (graphicPackDir != null) CopyDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "content"), Path.Join(graphicPackDir, "content"));
             Dispatcher.Invoke(() => d.Close());
         }
         public static void CopyDirectory(string sourcePath, string targetPath)
@@ -613,8 +682,8 @@ namespace STTUMM
                 return "giant";
             if (RangerType.IsChecked == true)
                 return "ranger";
-            if (MiniType.IsChecked == true)
-                return "mini";
+            //if (MiniType.IsChecked == true)
+            //    return "mini";
             if (SwapForceType.IsChecked == true)
                 return "swap";
             return "";
@@ -690,7 +759,7 @@ namespace STTUMM
                 {
                     SG.IsChecked = true;
                 }
-                else if (sender == RangerType || sender == MiniType)
+                else if (sender == RangerType /*|| sender == MiniType*/)
                 {
                     STT.IsChecked = true;
                 }
@@ -721,12 +790,12 @@ namespace STTUMM
                 if (this.WindowState == WindowState.Maximized)
                 {
                     grid.Margin = new Thickness(7);
-                    ModsMenuResizeOnMaximize.Margin = new Thickness(0,40,0,30);
+                    ModsMenuResizeOnMaximize.Margin = new Thickness(0, 40, 0, 30);
                 }
                 else
                 {
                     grid.Margin = new Thickness(0);
-                    ModsMenuResizeOnMaximize.Margin = new Thickness(0,40,0,0);
+                    ModsMenuResizeOnMaximize.Margin = new Thickness(0, 40, 0, 0);
                 }
             }
         }
@@ -750,6 +819,10 @@ namespace STTUMM
         private void CreditsButton_Click(object sender, RoutedEventArgs e)
         {
             SwitchMenu(3);
+        }
+        private void CEMUButton_Click(object sender, RoutedEventArgs e)
+        {
+            SwitchMenu(4);
         }
         private void SaveSettings_Click(object sender, RoutedEventArgs e)
         {
@@ -791,11 +864,11 @@ namespace STTUMM
                 CEMUOk = false;
                 CEMUFolderSelect.SetError("Folder does not exist");
             }
-            else if (!File.Exists(Path.Join(CEMUPath, "Cemu.exe")))
-            {
-                CEMUOk = false;
-                CEMUFolderSelect.SetError("\"Cemu.exe\" not found");
-            }
+            //else if (!File.Exists(Path.Join(CEMUPath, "Cemu.exe")))
+            //{
+            //    CEMUOk = false;
+            //    CEMUFolderSelect.SetError("\"Cemu.exe\" not found");
+            //}
             else
             {
                 CEMUOk = true;
@@ -823,6 +896,16 @@ namespace STTUMM
                 config.Paths.Loadiine = LoadiinePath;
                 config.Paths.Cemu = CEMUPath;
                 config.Paths.Dump = DumpPath;
+                config.Region = new string[] { "USA", "EUR" }[GameRegion.SelectedIndex];
+                if (File.Exists(Path.Join(config.Paths.Cemu, "Cemu.exe")))
+                {
+                    CEMUMenuButton.Visibility = Visibility.Visible;
+                    UpdateAccounts();
+                }
+                else
+                {
+                    CEMUMenuButton.Visibility = Visibility.Collapsed;
+                }
                 config.Save(configPath);
             }
         }
@@ -833,6 +916,20 @@ namespace STTUMM
             confirm.ShowDialog();
             return confirm.Result;
         }
+        public bool Alert(string msg)
+        {
+            var alert = new Alert(msg);
+            alert.Owner = this;
+            alert.ShowDialog();
+            return alert.Result;
+        }
+        public string SelectOption(string msg, string[] options)
+        {
+            var selectOptions = new SelectOptions(msg, options);
+            selectOptions.Owner = this;
+            selectOptions.ShowDialog();
+            return selectOptions.Result;
+        }
         private void Reset_Click(object sender, RoutedEventArgs e)
         {
 
@@ -840,10 +937,55 @@ namespace STTUMM
             {
                 File.Delete(configPath);
                 ModDisplayThumbnail.Source = null;
-                Directory.Delete(Path.Join(Directory.GetCurrentDirectory(), "Installed Mods"), true);
+                Directory.Delete(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Installed Mods"), true);
                 Setup window = new Setup();
                 window.Show();
                 this.Close();
+            }
+        }
+        private void OneClickInstall_Click(object sender, RoutedEventArgs e)
+        {
+            if (Confirm("This will modify your\nwindows registry.\nAre you sure you want to proceed?"))
+            {
+                string exePath = Assembly.GetExecutingAssembly().Location.Replace(".dll", ".exe").Replace("\\", "\\\\");
+                if (File.Exists(exePath))
+                {
+                    string regFileContent = $"Windows Registry Editor Version 5.00\n\n[HKEY_CLASSES_ROOT\\sttumm]\n@=\"STTUMM\"\n\"URL Protocol\"=\"\"\n[HKEY_CLASSES_ROOT\\sttumm\\shell\\open\\command]\n@=\"\\\"{exePath}\\\" \\\"%1\\\"\"";
+                    string regFilePath = Path.Combine(Path.GetTempPath(), "temp.reg");
+                    File.WriteAllText(regFilePath, regFileContent);
+                    var regeditProcessInfo = new ProcessStartInfo
+                    {
+                        FileName = "regedit.exe",
+                        Arguments = "/s " + regFilePath,
+                        Verb = "runas",
+                        UseShellExecute = true
+                    };
+                    try
+                    {
+                        Process regeditProcess = Process.Start(regeditProcessInfo);
+                        regeditProcess.WaitForExit();
+                        using (RegistryKey key = Registry.ClassesRoot.OpenSubKey("sttumm"))
+                        {
+                            if (key != null && key.GetValue("URL Protocol") != null)
+                            {
+                                Console.WriteLine("Installed!");
+                                File.Delete(regFilePath);
+                                return;
+                            }
+                        }
+                        File.Delete(regFilePath);
+                        return;
+                    }
+                    catch
+                    {
+                        File.Delete(regFilePath);
+                        return;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Unable to find exe");
+                }
             }
         }
         private void SwitchMenu(int idx)
@@ -1141,7 +1283,7 @@ namespace STTUMM
             EonVariant.IsChecked = false;
             SwitchModCreationMenu(0);
         }
-        public string GetModID(ModData.ModBase data, bool includeVersion = false)
+        public static string GetModID(ModData.ModBase data, bool includeVersion = false)
         {
             string versionString = includeVersion ? $".v{Regex.Replace(data.version, "[^0-9.]", "").Replace(".", "_")}" : "";
             return $"{Regex.Replace(data.author, "[^a-zA-Z0-9]", "_")}.{Regex.Replace(data.name, "[^a-zA-Z0-9]", "_")}{versionString}".Replace(",", "");
@@ -1163,7 +1305,7 @@ namespace STTUMM
                             using (StreamReader reader = new StreamReader(entry.Open()))
                             {
                                 ModData.ModBase data = ModData.ModBase.Load(reader.ReadToEnd());
-                                string path = Path.Join(Directory.GetCurrentDirectory(), "Installed Mods", GetModID(data));
+                                string path = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Installed Mods", GetModID(data));
                                 if (Directory.Exists(path))
                                 {
                                     Directory.Delete(path, true);
@@ -1186,12 +1328,15 @@ namespace STTUMM
             await MergeWithDialog();
             ProcessStartInfo info = new ProcessStartInfo();
             info.FileName = Path.Join(config.Paths.Cemu, "Cemu.exe");
-            info.Arguments = "-t 000500001017c600";
+            if (config.Region == "USA")
+                info.Arguments = "-t 000500001017C600";
+            else if (config.Region == "EUR")
+                info.Arguments = "-t 0005000010181F00";
             Process process = new Process();
             process.StartInfo = info;
             process.Start();
         }
-        private void UpdateModData()
+        public void UpdateModData()
         {
             ModDisplay.Visibility = Visibility.Hidden;
             ModDisplayLabel.Visibility = Visibility.Visible;
@@ -1204,7 +1349,7 @@ namespace STTUMM
             ContentMods.Clear();
             TextureMods.Clear();
             LanguageMods.Clear();
-            foreach (string modPath in Directory.GetDirectories(Path.Join(Directory.GetCurrentDirectory(), "Installed Mods")))
+            foreach (string modPath in Directory.GetDirectories(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Installed Mods")))
             {
                 if (File.Exists(Path.Join(modPath, "data.json")))
                 {
@@ -1244,6 +1389,7 @@ namespace STTUMM
                                 {
                                     ModData.ModBase modpackMod = ModData.ModBase.Load(File.ReadAllText(Path.Join(modpackModPath, "data.json")));
                                     ModListItem modpackModItem = new ModListItem(modpackModPath);
+                                    modpackModItem.ModpackName = modItem.ModName;
                                     if (modpackMod.type == "skylander")
                                     {
                                         modItem.ModpackMods.Add(modpackModItem);
@@ -1292,6 +1438,7 @@ namespace STTUMM
             }
             UpdateModData();
         }
+        private ModListItem DisplayedMod;
         private string DisplayedModPath;
         private void PreviewMod(object sender, RoutedEventArgs e)
         {
@@ -1359,6 +1506,7 @@ namespace STTUMM
                     break;
                 }
             }
+            DisplayedMod = mod;
             DisplayedModPath = mod.ModDirectory;
             ((Grid)sender).Background = new SolidColorBrush(Color.FromArgb(0x60, 0, 0xFF, 0));
             ModData.ModBase data = ModData.ModBase.Load(File.ReadAllText(Path.Join(mod.ModDirectory, "data.json")));
@@ -1375,6 +1523,8 @@ namespace STTUMM
             ModDisplayLabel.Visibility = Visibility.Hidden;
             ModDisplay.Visibility = Visibility.Visible;
             ModDeleteButton.Visibility = inModpack ? Visibility.Hidden : Visibility.Visible;
+            ModSkylanderDumpOptions.Margin = inModpack ? new Thickness(0, 0, 0, 5) : new Thickness(0, 0, 0, 40);
+            ModSkylanderDumpOptions.Visibility = data.type == "skylander" ? Visibility.Visible : Visibility.Hidden;
         }
         private void CreateMod(object sender, RoutedEventArgs e)
         {
@@ -1395,6 +1545,94 @@ namespace STTUMM
                 ModDisplayThumbnail.Source = null;
                 Directory.Delete(DisplayedModPath, true);
                 UpdateModData();
+            }
+        }
+        private void ExportSkylanderDump(object sender, RoutedEventArgs e)
+        {
+            ModListItem mod = DisplayedMod;
+
+            string path = config.Paths.Dump;
+            ModData.ModBase data = ModData.ModBase.Load(File.ReadAllText(Path.Join(DisplayedMod.ModDirectory, "data.json")));
+            if (mod.ModpackName != null)
+                path = Path.Join(path, SanitizeFolderName(mod.ModpackName), SanitizeFolderName(mod.ModName));
+            else
+                path = Path.Join(path, SanitizeFolderName(mod.ModName));
+
+            string filename = SelectOption("Which dump do you want to export?", Directory.GetFiles(path, "*.sky").Select(Path.GetFileName).ToArray());
+
+            if (filename != null)
+            {
+                SaveFileDialog saveFileDialog = new SaveFileDialog
+                {
+                    FileName = filename,
+                    DefaultExt = ".sky",
+                    Filter = "Skylander Dumps (*.sky)|*.sky"
+                };
+
+                bool? result = saveFileDialog.ShowDialog();
+                if (result == true)
+                {
+                    File.Copy(Path.Join(path, filename), saveFileDialog.FileName);
+                }
+            }
+        }
+        private void ReplaceSkylanderDump(object sender, RoutedEventArgs e)
+        {
+            if (Confirm("This action is permanent, and\ncannot be undone.\nAre you sure you want to proceed?"))
+            {
+                ModListItem mod = DisplayedMod;
+
+                string path = config.Paths.Dump;
+                ModData.ModBase data = ModData.ModBase.Load(File.ReadAllText(Path.Join(DisplayedMod.ModDirectory, "data.json")));
+                if (mod.ModpackName != null)
+                    path = Path.Join(path, SanitizeFolderName(mod.ModpackName), SanitizeFolderName(mod.ModName));
+                else
+                    path = Path.Join(path, SanitizeFolderName(mod.ModName));
+
+                string filename = SelectOption("Which dump do you want to replace?", Directory.GetFiles(path, "*.sky").Select(Path.GetFileName).ToArray());
+
+                OpenFileDialog openFileDialog = new OpenFileDialog
+                {
+                    Filter = "Skylander Dumps (*.sky)|*.sky",
+                    Title = "Replace Skylander Dump"
+                };
+
+                bool? result = openFileDialog.ShowDialog();
+                if (result == true)
+                {
+                    byte[] target = File.ReadAllBytes(Path.Join(path, filename));
+                    byte[] dump = File.ReadAllBytes(openFileDialog.FileName);
+                    int id = SkylanderDumps.GetID(target);
+                    int variantId = SkylanderDumps.GetVariantID(target);
+                    dump = SkylanderDumps.SetID(dump, id);
+                    dump = SkylanderDumps.SetVariantID(dump, variantId);
+                    File.WriteAllBytes(Path.Join(path, filename), dump);
+                }
+                else
+                {
+                    Console.WriteLine("File selection canceled.");
+                }
+            }
+        }
+        private void ResetSkylanderDump(object sender, RoutedEventArgs e)
+        {
+            if (Confirm("This action is permanent, and\ncannot be undone.\nAre you sure you want to proceed?"))
+            {
+                ModListItem mod = DisplayedMod;
+
+                string path = config.Paths.Dump;
+                ModData.ModBase data = ModData.ModBase.Load(File.ReadAllText(Path.Join(DisplayedMod.ModDirectory, "data.json")));
+                if (mod.ModpackName != null)
+                    path = Path.Join(path, SanitizeFolderName(mod.ModpackName), SanitizeFolderName(mod.ModName));
+                else
+                    path = Path.Join(path, SanitizeFolderName(mod.ModName));
+
+                string filename = SelectOption("Which dump do you want to reset?", Directory.GetFiles(path, "*.sky").Select(Path.GetFileName).ToArray());
+
+                byte[] target = File.ReadAllBytes(Path.Join(path, filename));
+                int id = SkylanderDumps.GetID(target);
+                int variantId = SkylanderDumps.GetVariantID(target);
+                File.WriteAllBytes(Path.Join(path, filename), SkylanderDumps.Generate(id, variantId));
             }
         }
         private void CreateContentReplacementMod(object sender, RoutedEventArgs e)
@@ -1774,7 +2012,8 @@ namespace STTUMM
                                                 MemoryStream stream2 = new MemoryStream();
                                                 iga2.ExtractFile((uint)Array.IndexOf(iga2.names, iga1.names[i]), stream2, out _, true);
                                                 Dictionary<int, string> edits = new Dictionary<int, string>();
-                                                if (IsDiff(stream1, stream2)) {
+                                                if (IsDiff(stream1, stream2))
+                                                {
                                                     LanguagePak pak1 = new LanguagePak(stream1);
                                                     LanguagePak pak2 = new LanguagePak(stream2);
                                                     string[] data1 = pak1.unpack();
@@ -1913,6 +2152,151 @@ namespace STTUMM
                 ModType.SelectedIndex = 0;
                 ModsInModpack.Items.Clear();
                 SwitchModCreationMenu(0);
+            }
+        }
+
+        public List<string> accIds = new List<string>();
+        public void UpdateAccounts()
+        {
+            XDocument doc = XDocument.Load(Path.Join(config.Paths.Cemu, "settings.xml"));
+            string mlc_path = doc.Element("content").Element("mlc_path").Value;
+            string actPath = Path.Join(mlc_path, "usr", "save", "system", "act");
+            if (AccountSelector.ItemsSource is List<string>)
+                ((List<string>)AccountSelector.ItemsSource).Clear();
+            else
+                AccountSelector.Items.Clear();
+            List<string> accounts = new List<string>();
+            foreach (string folder in Directory.GetDirectories(actPath))
+            {
+                if (File.Exists(Path.Join(folder, "account.dat")))
+                {
+                    string[] lines = File.ReadAllLines(Path.Join(folder, "account.dat"));
+                    string actId = "";
+                    string actName = "";
+                    foreach (string line in lines)
+                    {
+                        if (line.StartsWith("PersistentId="))
+                        {
+                            actId = line.Substring("PersistentId=".Length);
+                            continue;
+                        }
+                        if (line.StartsWith("MiiName="))
+                        {
+                            actName = line.Substring("MiiName=".Length);
+                            byte[] actNameBytes = new byte[actName.Length / 2];
+                            for (int i = 0; i < actNameBytes.Length / 2; i++)
+                            {
+                                actNameBytes[i * 2] = Convert.ToByte(actName.Substring(i * 4 + 2, 2), 16);
+                                actNameBytes[i * 2 + 1] = Convert.ToByte(actName.Substring(i * 4, 2), 16);
+                            }
+                            actName = Encoding.Unicode.GetString(actNameBytes);
+                            continue;
+                        }
+                    }
+                    if (actId != null && actName != null)
+                    {
+                        accounts.Add($"{actName} ({actId})");
+                        accIds.Add(actId);
+                    }
+                }
+            }
+            AccountSelector.ItemsSource = accounts;
+            AccountSelector.SelectedIndex = -1;
+        }
+        private void BackupSaveData_Click(object sender, RoutedEventArgs e)
+        {
+            if (AccountSelector.SelectedIndex == -1)
+                AccountSelector.SelectedIndex = 0;
+            if (FilterFilename(BackupSaveName.Text) == "")
+            {
+                Alert("No save name entered.\nPlease enter a save name.");
+                return;
+            }
+            XDocument doc = XDocument.Load(Path.Join(config.Paths.Cemu, "settings.xml"));
+            string mlc_path = doc.Element("content").Element("mlc_path").Value;
+            if (!Directory.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Save Backups")))
+                Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Save Backups"));
+            string savePath;
+            if (config.Region == "EUR")
+                savePath = Path.Join(mlc_path, "usr", "save", "00050000", "10181F00");
+            else
+                savePath = Path.Join(mlc_path, "usr", "save", "00050000", "1017C600");
+            if (Directory.Exists(savePath))
+            {
+                savePath = Path.Join(savePath, "user", accIds[AccountSelector.SelectedIndex]);
+                if (Directory.Exists(savePath))
+                {
+                    if (!Directory.Exists(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Save Backups", accIds[AccountSelector.SelectedIndex], FilterFilename(BackupSaveName.Text))))
+                        Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Save Backups", accIds[AccountSelector.SelectedIndex], FilterFilename(BackupSaveName.Text)));
+                    CopyDirectory(savePath, Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Save Backups", accIds[AccountSelector.SelectedIndex], FilterFilename(BackupSaveName.Text)));
+                    UpdateSaveData();
+                }
+                else
+                {
+                    Alert("No save files for account found.\nTry a different account.");
+                }
+            }
+            else
+            {
+                Alert("No save files for game found.\nCheck game region in settings.");
+            }
+        }
+        public void UpdateSaveData()
+        {
+            SaveBackupsList.Items.Clear();
+            string SaveBackupRootPath = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Save Backups");
+            if (!Directory.Exists(SaveBackupRootPath))
+            {
+                Directory.CreateDirectory(SaveBackupRootPath);
+                return;
+            }
+            foreach (string accountPath in Directory.GetDirectories(SaveBackupRootPath))
+            {
+                string accountId = Path.GetFileName(accountPath);
+                foreach (string savePath in Directory.GetDirectories(accountPath))
+                {
+                    SaveBackup save = new SaveBackup()
+                    {
+                        SaveName = Path.GetFileName(savePath),
+                        Directory = savePath,
+                        AccountId = accountId
+                    };
+                    SaveBackupsList.Items.Add(save);
+                }
+            }
+            UpdateAccounts();
+            BackupSaveName.Text = "";
+        }
+
+        private void RestoreSave_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var save = button.DataContext as SaveBackup;
+            var slot = button.Tag.ToString();
+            if (Confirm($"This will override your current\nSave__{slot}.\nAre you sure you want to proceed?"))
+            {
+                XDocument doc = XDocument.Load(Path.Join(config.Paths.Cemu, "settings.xml"));
+                string mlc_path = doc.Element("content").Element("mlc_path").Value;
+                string savePath;
+                if (config.Region == "EUR")
+                    savePath = Path.Join(mlc_path, "usr", "save", "00050000", "10181F00");
+                else
+                    savePath = Path.Join(mlc_path, "usr", "save", "00050000", "1017C600");
+                savePath = Path.Join(savePath, "user", save.AccountId);
+                if (!Directory.Exists(savePath))
+                    Directory.CreateDirectory(savePath);
+                if (File.Exists(Path.Join(savePath, $"Save_{slot}")))
+                    File.Delete(Path.Join(savePath, $"Save_{slot}"));
+                File.Copy(Path.Join(save.Directory, $"Save_{slot}"), Path.Join(savePath, $"Save_{slot}"));
+            }
+        }
+        private void DeleteSaveBackup_Click(object sender, RoutedEventArgs e)
+        {
+            var save = (sender as Button).DataContext as SaveBackup;
+            if (Confirm("This will PERMANENTLY delete the\nsave backup.\nAre you sure you want to proceed?"))
+            {
+                Directory.Delete(save.Directory, true);
+                UpdateSaveData();
             }
         }
     }

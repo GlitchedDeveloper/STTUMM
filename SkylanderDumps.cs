@@ -133,6 +133,22 @@ namespace STTUMM
             data = skyDecrypter.encryptSkylander(data);
             return data;
         }
+
+        public static byte[] SetVariantID(byte[] data, int id)
+        {
+            data = skyDecrypter.decryptSkylander(data);
+            byte[] idStringArray = BitConverter.GetBytes(id);
+            data[28] = idStringArray[0];
+            data[29] = idStringArray[1];
+
+            byte[] crcStringArray = BitConverter.GetBytes(crc16(data, 0, 30));
+            data[30] = crcStringArray[0];
+            data[31] = crcStringArray[1];
+
+            FixCRCs(ref data);
+            data = skyDecrypter.encryptSkylander(data);
+            return data;
+        }
         private static long computeCRC48(List<byte> data)
         {
             long polynomial = 0x42f0e1eba9ea3693L;

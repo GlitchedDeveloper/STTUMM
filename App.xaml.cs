@@ -1,6 +1,4 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿using System.Windows;
 
 namespace Skylanders_Trap_Team_Wii_U_Mod_Manager
 {
@@ -10,5 +8,4 @@ namespace Skylanders_Trap_Team_Wii_U_Mod_Manager
     public partial class App : Application
     {
     }
-
 }

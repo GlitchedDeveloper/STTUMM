@@ -50,12 +50,17 @@
                 <Image x:Name="Logo" Source="assets/logo.png" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,10,0,0" Width="700"/>
                 <Button x:Name="SetupButton" HorizontalAlignment="Center" Content="Continue to Setup" Margin="0,312,0,0" VerticalAlignment="Top" FontSize="30px" Click="SetupButton_Click"/>
             </Grid>
-            <Label Content="Mod Manager v1.0 BETA" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" Foreground="#0f0" FontFamily="Consolas"/>
+            <Label Content="Mod Manager v1.1 BETA" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" Foreground="#0f0" FontFamily="Consolas"/>
             <Grid x:Name="SetupSettings" Margin="0,0,0,0" Visibility="Collapsed">
                 <userControls:FolderSelect x:Name="LoadiineFolderSelect" LabelContent="Loadiine Content Path" HorizontalAlignment="Stretch" Margin="20,10,20,0" VerticalAlignment="Top"/>
                 <userControls:FolderSelect x:Name="DumpFolderSelect" LabelContent="Skylander Dump Output Path" HorizontalAlignment="Stretch" Margin="20,110,20,0" VerticalAlignment="Top"/>
                 <userControls:FolderSelect x:Name="CEMUFolderSelect" LabelContent="CEMU Path (Optional)" HorizontalAlignment="Stretch" Margin="20,210,20,0" VerticalAlignment="Top"/>
-                <Button x:Name="FinishSetupButton" HorizontalAlignment="Center" Content="Finish Setup" Margin="0,312,0,0" VerticalAlignment="Top" FontSize="30px" Click="FinishSetupButton_Click"/>
+                <Label Content="Game Region" VerticalAlignment="Top" HorizontalAlignment="Left" Padding="0" Margin="25,310,0,0"/>
+                <ComboBox x:Name="GameRegion" HorizontalAlignment="Stretch" Margin="20,330,10,0" VerticalAlignment="Top" Height="24" SelectedIndex="0">
+                    <ComboBoxItem>USA</ComboBoxItem>
+                    <ComboBoxItem>EUR</ComboBoxItem>
+                </ComboBox>
+                <Button x:Name="FinishSetupButton" HorizontalAlignment="Center" Content="Finish Setup" Margin="0,370,0,0" VerticalAlignment="Top" FontSize="30px" Click="FinishSetupButton_Click"/>
             </Grid>
         </Grid>
         <Grid x:Name="TitleBar" Background="Black" Height="20" VerticalAlignment="Top" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
